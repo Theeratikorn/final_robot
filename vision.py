@@ -157,3 +157,113 @@ def img_preocessing():
 
     cap.release()
     cv2.destroyAllWindows()
+import cv2
+import numpy as np
+
+# Initial value for saved coordinates
+saved_coordinates = None
+
+# Initial HSV range for object detection
+lower_hsv = np.array([0, 0, 0])
+upper_hsv = np.array([179, 255, 255])
+
+def adjust_hsv(value):
+    pass  # Placeholder for trackbar callback
+
+def open_camera_with_hsv():
+    global saved_coordinates
+    global lower_hsv, upper_hsv
+    saved_coordinates = None  # Set to None at the start
+
+    # Open the camera
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+    # Create a window for sliders
+    cv2.namedWindow('HSV Adjustments')
+    cv2.createTrackbar('H Min', 'HSV Adjustments', 0, 179, adjust_hsv)
+    cv2.createTrackbar('H Max', 'HSV Adjustments', 179, 179, adjust_hsv)
+    cv2.createTrackbar('S Min', 'HSV Adjustments', 0, 255, adjust_hsv)
+    cv2.createTrackbar('S Max', 'HSV Adjustments', 255, 255, adjust_hsv)
+    cv2.createTrackbar('V Min', 'HSV Adjustments', 0, 255, adjust_hsv)
+    cv2.createTrackbar('V Max', 'HSV Adjustments', 255, 255, adjust_hsv)
+
+    def click_event(event, x, y, flags, param):
+        global saved_coordinates
+        if event == cv2.EVENT_LBUTTONDOWN:  # Left click
+            print(f"Left Click at x: {x}, y: {y}")
+            saved_coordinates = (x, y)
+        elif event == cv2.EVENT_RBUTTONDOWN:  # Right click
+            hsv_frame = param
+            color_hsv = hsv_frame[y, x]
+            print(f"Right Click at x: {x}, y: {y}, HSV: {color_hsv}")
+
+            # Create a small image to display the color and HSV values
+            color_display = np.zeros((150, 300, 3), dtype=np.uint8)
+            color_display[:] = cv2.cvtColor(np.uint8([[color_hsv]]), cv2.COLOR_HSV2BGR)[0][0]
+
+            # Add text to show the HSV values
+            text_color = (255, 255, 255) if np.mean(color_display) < 128 else (0, 0, 0)
+            cv2.putText(color_display, f"H: {color_hsv[0]}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2)
+            cv2.putText(color_display, f"S: {color_hsv[1]}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2)
+            cv2.putText(color_display, f"V: {color_hsv[2]}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2)
+
+            # Show the color in a new window
+            cv2.imshow('Picked Color', color_display)
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to grab frame")
+            break
+
+        # Convert color to HSV
+        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        # Update HSV range from trackbars
+        h_min = cv2.getTrackbarPos('H Min', 'HSV Adjustments')
+        h_max = cv2.getTrackbarPos('H Max', 'HSV Adjustments')
+        s_min = cv2.getTrackbarPos('S Min', 'HSV Adjustments')
+        s_max = cv2.getTrackbarPos('S Max', 'HSV Adjustments')
+        v_min = cv2.getTrackbarPos('V Min', 'HSV Adjustments')
+        v_max = cv2.getTrackbarPos('V Max', 'HSV Adjustments')
+
+        lower_hsv = np.array([h_min, s_min, v_min])
+        upper_hsv = np.array([h_max, s_max, v_max])
+
+        # Create mask and find contours
+        mask = cv2.inRange(hsv_frame, lower_hsv, upper_hsv)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Draw contours on the frame
+        cv2.drawContours(frame, contours, -1, (0, 255, 0), 2)
+
+        # Add text to display saved coordinates and HSV color
+        if saved_coordinates is not None:
+            x, y = saved_coordinates
+            cv2.putText(frame, f"Saved: {x}, {y}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # Draw a circle at the saved coordinates
+            cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
+
+        # Display the frame
+        cv2.imshow('HSV Frame', frame)
+        
+        # Set mouse callback for interaction
+        cv2.setMouseCallback('HSV Frame', click_event, param=hsv_frame)
+
+        # Wait for key press
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):  # Press 'q' to quit
+            break
+        elif key == ord('s'):  # Press 's' to save the last left-clicked coordinates
+            if saved_coordinates is not None:
+                print(f"Saved Coordinates: {saved_coordinates}")
+
+    # Release the camera and close the window
+    cap.release()
+    cv2.destroyAllWindows()
+
+    return saved_coordinates
+
+
