@@ -1,9 +1,9 @@
 import numpy as np
-# from adafruit_servokit import ServoKit
+from adafruit_servokit import ServoKit
 import time
 from time import sleep
 import threading
-# import calculations as cal
+import calculations as cal
 import sub_calculation as cal
 import vision as vi
 import calibration as calibrate
