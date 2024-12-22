@@ -3,7 +3,7 @@ import numpy as np
 
 # Load robot parameters from a JSON file
 class RobotParameters:
-    def __init__(self, config_file="src/robot_config.json"):
+    def __init__(self, config_file="robot_config.json"):
         # โหลดไฟล์ JSON
         with open(config_file, 'r') as file:
             config = json.load(file)

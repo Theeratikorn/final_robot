@@ -3,18 +3,13 @@ from adafruit_servokit import ServoKit
 import time
 from time import sleep
 import threading
-import calculations as cal
 import sub_calculation as cal
+# import sub_calculation as cal
 import vision as vi
 import calibration as calibrate
 
-# kit.servo[0].angle = 0
-# sleep(1)
-# kit.servo[0].angle = 30
-# Initialize ServoKit for PCA9685 with 16 channels
-
 previous = [0,120,-90,-90]
-# kit = ServoKit(channels=16)
+kit = ServoKit(channels=16)
 
 # Define channel mapping (adjust based on your servo connections)
 
@@ -538,12 +533,91 @@ while True:
 
                     break
 
+        elif command == 'grab':
+
+            x = float(input('X : '))
+            y = float(input('Y : ')) 
+            z = float(input('Z : '))
+
+            # if x <= 10:
+            #     z = 5
+            # elif 15 < x <=20:
+
+
+            for i in range(-100, -30, 2):  
+                phi_rad = np.deg2rad(i)  
+                theta = cal.movej(x, y, z , phi=phi_rad)
+
+
+                if not (theta is None or all(v is None for v in theta)): 
+
+                    th1, th2 ,th3 , th4 = theta
+                    p_base,p_link1,p_link2,p_whist = previous
+                    
+                    print(f'\nnow phi {i}')
+                    print(f'target Theta are {th1, th2 ,th3 , th4} deg ')
+                    print(f'now Theta are {(p_base,p_link1,p_link2,p_whist)} deg ')
+
+                    #ans = input('go / new / exit : ').strip()
+                    #if ans.startswith("go"):
+
+                    finger_gripper_open()
+                    time.sleep(0.3)
+                        
+                    move_go(previous=previous,theta=theta)
+                    time.sleep(0.3)
+                    previous = theta
+                    p_base,p_link1,p_link2,p_whist = previous
+
+                    finger_gripper_close()
+                    time.sleep(0.3)
+
+                    move_link1(np.deg2rad(p_link1),np.deg2rad(90))
+                    p_link1 = 90
+                    previous = (p_base,p_link1,p_link2,p_whist)
+
+
+                    for i in range(-100, -30, 2):  
+                        phi_rad = np.deg2rad(i)
+                        drop_target = [0,35,25]  ## X Y Z  
+                        theta = cal.movej(drop_target[0], drop_target[1], drop_target[2] , phi=phi_rad)
+
+                        if not (theta is None or all(v is None for v in theta)):
+                            print('Dropping ...')
+                            fill_control_all_servos_with_threads(previous=previous,goal= theta)
+                            time.sleep(0.2)
+                            print('finish!!')
+                            finger_gripper_open()
+                    
+                            previous = theta
+                            print(f'now {previous}')
+                            break
+                
+                    print('going home ...')
+                    p_th1 , p_th2 , p_th3 , p_th4 = previous
+                    
+                    move_whist(np.deg2rad(p_th4),np.deg2rad(90))
+                    time.sleep(0.2)
+                    
+                    p_th4 = 90
+                    previous = (p_th1 , p_th2 , p_th3 , p_th4)
+                    goal = (0,120,-90,p_th4)
+                    
+                    fill_control_all_servos_with_threads(previous = previous , goal=goal)
+                    time.sleep(0.2)
+                    
+                    move_whist(np.deg2rad(p_th4),np.deg2rad(-90))
+                    time.sleep(0.2)
+                            
+                    previous=(0,120,-90,-90)
+
+                    break
 
         elif command == 'find_all':
             targets = vi.img_preocessing()
             print()
 
-        elif command == 'pick':
+        elif command == 'picky':
             try:
                 color = int(input("Type Color : "))
                 corner =  int(input("Num of corner (99 for pick all) : "))
@@ -554,6 +628,7 @@ while True:
 
 
             for target in targets:
+
                 if target[0] == color and target[1] == corner:
                     x , y = target[2] , target[3]
     
@@ -649,7 +724,7 @@ while True:
                 else :
                     print(f"{target} not a target")
 
-        elif command == 'ex':
+        elif command == 'xex':
 
             x_px , y_px  = vi.open_camera_with_hsv()
             
@@ -730,7 +805,168 @@ while True:
                                     
                 previous=(0,120,-90,-90)
 
-                break            
+                break 
+
+        elif command == 'ex':
+
+            x_px , y_px  = vi.open_camera_with_hsv()
+            
+            x , y = calibrate.transform_coordinate(x_px , y_px , 0 , 13)
+
+            z = 6.75
+
+            for i in range(-100, -30, 2):  
+                phi_rad = np.deg2rad(i)  
+                theta = cal.movej(x, y, z , phi=phi_rad)
+
+
+                if not (theta is None or all(v is None for v in theta)): 
+
+                    th1, th2 ,th3 , th4 = theta
+                    p_base,p_link1,p_link2,p_whist = previous
+                    
+                    print(f'\nnow phi {i}')
+                    print(f'target Theta are {th1, th2 ,th3 , th4} deg ')
+                    print(f'now Theta are {(p_base,p_link1,p_link2,p_whist)} deg ')
+
+                    finger_gripper_open()
+                    time.sleep(0.3)
+                        
+                    move_go(previous=previous,theta=theta)
+                    time.sleep(0.3)
+                    previous = theta
+                    p_base,p_link1,p_link2,p_whist = previous
+
+                    finger_gripper_close()
+                    time.sleep(0.3)
+
+                    move_link1(np.deg2rad(p_link1),np.deg2rad(90))
+                    p_link1 = 90
+                    previous = (p_base,p_link1,p_link2,p_whist)
+
+
+                    for i in range(-100, -30, 2):  
+                        phi_rad = np.deg2rad(i)
+                        drop_target = [0,35,25]  ## X Y Z  
+                        theta = cal.movej(drop_target[0], drop_target[1], drop_target[2] , phi=phi_rad)
+
+                        if not (theta is None or all(v is None for v in theta)):
+                            print('Dropping ...')
+                            fill_control_all_servos_with_threads(previous=previous,goal= theta)
+                            time.sleep(0.2)
+                            print('finish!!')
+                            finger_gripper_open()
+                    
+                            previous = theta
+                            print(f'now {previous}')
+                            break
+                
+                    print('going home ...')
+                    p_th1 , p_th2 , p_th3 , p_th4 = previous
+                    
+                    move_whist(np.deg2rad(p_th4),np.deg2rad(90))
+                    time.sleep(0.2)
+                    
+                    p_th4 = 90
+                    previous = (p_th1 , p_th2 , p_th3 , p_th4)
+                    goal = (0,120,-90,p_th4)
+                    
+                    fill_control_all_servos_with_threads(previous = previous , goal=goal)
+                    time.sleep(0.2)
+                    
+                    move_whist(np.deg2rad(p_th4),np.deg2rad(-90))
+                    time.sleep(0.2)
+                            
+                    previous=(0,120,-90,-90)
+
+                    break
+
+        elif command == 'pick':
+
+            try:
+                color = int(input("Type Color : "))
+                corner =  int(input("Num of corner (99 for pick all) : "))
+
+            except ValueError:
+                    print("Invalid command format. Usage: pick <color> <corner>")
+
+
+
+            for target in targets:
+                
+                if target[0] == color and target[1] == corner:
+                    x , y = target[2] , target[3]
+    
+                    print(f'going to target x: {x} y: {y}')
+
+
+                    x , y = calibrate.transform_coordinate(x,y,0,13)
+
+                    for i in range(-100, -30, 2):  
+                        phi_rad = np.deg2rad(i)  
+                        theta = cal.movej(x, y, z , phi=phi_rad)
+
+
+                        if not (theta is None or all(v is None for v in theta)): 
+
+                            th1, th2 ,th3 , th4 = theta
+                            p_base,p_link1,p_link2,p_whist = previous
+                            
+                            print(f'\nnow phi {i}')
+                            print(f'target Theta are {th1, th2 ,th3 , th4} deg ')
+                            print(f'now Theta are {(p_base,p_link1,p_link2,p_whist)} deg ')
+
+                            finger_gripper_open()
+                            time.sleep(0.3)
+                                
+                            move_go(previous=previous,theta=theta)
+                            time.sleep(0.3)
+                            previous = theta
+                            p_base,p_link1,p_link2,p_whist = previous
+
+                            finger_gripper_close()
+                            time.sleep(0.3)
+
+                            move_link1(np.deg2rad(p_link1),np.deg2rad(90))
+                            p_link1 = 90
+                            previous = (p_base,p_link1,p_link2,p_whist)
+
+
+                            for i in range(-100, -30, 2):  
+                                phi_rad = np.deg2rad(i)
+                                drop_target = [0,35,25]  ## X Y Z  
+                                theta = cal.movej(drop_target[0], drop_target[1], drop_target[2] , phi=phi_rad)
+
+                                if not (theta is None or all(v is None for v in theta)):
+                                    print('Dropping ...')
+                                    fill_control_all_servos_with_threads(previous=previous,goal= theta)
+                                    time.sleep(0.2)
+                                    print('finish!!')
+                                    finger_gripper_open()
+                            
+                                    previous = theta
+                                    print(f'now {previous}')
+                                    break
+                        
+                            print('going home ...')
+                            p_th1 , p_th2 , p_th3 , p_th4 = previous
+                            
+                            move_whist(np.deg2rad(p_th4),np.deg2rad(90))
+                            time.sleep(0.2)
+                            
+                            p_th4 = 90
+                            previous = (p_th1 , p_th2 , p_th3 , p_th4)
+                            goal = (0,120,-90,p_th4)
+                            
+                            fill_control_all_servos_with_threads(previous = previous , goal=goal)
+                            time.sleep(0.2)
+                            
+                            move_whist(np.deg2rad(p_th4),np.deg2rad(-90))
+                            time.sleep(0.2)
+                                    
+                            previous=(0,120,-90,-90)
+
+                            break
 
 
     except Exception as e:
